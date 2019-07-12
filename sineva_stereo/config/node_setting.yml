@@ -1,0 +1,4 @@
+%YAML:1.0
+calib_file_left: /home/h/SinevaRobot-BJ/Sineva_Autoware/ros/src/computing/perception/localization/packages/sineva_stereo/config/calib_left.yml
+calib_file_right: /home/h/SinevaRobot-BJ/Sineva_Autoware/ros/src/computing/perception/localization/packages/sineva_stereo/config/calib_right.yml
+baseline: 0.119170950703722

@@ -1,0 +1,7 @@
+<?xml version="1.0"?>
+<launch>
+	<node name="sineva_stereo_node" pkg="sineva_stereo" type="sineva_stereo_node" cwd="node" output="screen"/>
+		<param name="topic_left" value="/mynteye/left/image_color" type="str"/>
+		<param name="topic_right" value="/mynteye/right/image_color" type="str"/>
+		<param name="config_path" value="$(find sineva_stereo)/config/node_setting.yml" type="str"/>
+</launch>
