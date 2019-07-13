@@ -7,7 +7,7 @@
 using namespace cv;
 using namespace std;
 
-Mat edgeMap, dirMap;
+Mat edgeMap, dirMap ,dst;
 vector<Point> seedlist;
 
 Mat mat2gray(const cv::Mat& src)
@@ -33,7 +33,7 @@ Mat orientationMap(const cv::Mat& mag, const cv::Mat& ori, double thresh = 1.0)
             Vec3b* mapPixel = reinterpret_cast<Vec3b*>(oriMap.data + i*3*sizeof(char));
             if(*oriPixel < 90.0)
                 *mapPixel = red;
-            else if(*oriPixel >= 90.0 && *oriPixel < 180.0)
+            else if(*oriPixel >= 90.0 && *oriPixel < 180.0) 
                 *mapPixel = cyan;
             else if(*oriPixel >= 180.0 && *oriPixel < 270.0)
                 *mapPixel = green;
@@ -45,41 +45,71 @@ Mat orientationMap(const cv::Mat& mag, const cv::Mat& ori, double thresh = 1.0)
     return oriMap;
 }
 
-void reverse(float &direction)
-{
-    if (direction <= 90)
-    {
-        direction += 180;
-    }
-    else
-    {
-        direction -+ 180;
-    } 
-}
 
 int findAdj(Point &adj, float dir)
 {
-
+    edgeMap.at<uchar>(adj.y, adj.x) = 0;
+    if (abs(dir-45)<=22.5 && (int)edgeMap.at<uchar>(adj.y-1, adj.x-1) > 0 )
+    {
+        adj.x -= 1; adj.y -= 1; return 1;
+    }
+    else if ((dir<22.5 || dir >337.5) && (int)edgeMap.at<uchar>(adj.y-1, adj.x) > 0)
+    {
+        adj.y -= 1; return 1;
+    }
+    else if (abs(dir-315)<=22.5 && (int)edgeMap.at<uchar>(adj.y-1, adj.x+1) > 0)
+    {
+        adj.x += 1; adj.y -= 1; return 1;
+    }
+    else if (abs(dir-90)<=22.5 && (int)edgeMap.at<uchar>(adj.y, adj.x+1) > 0)
+    {
+        adj.x += 1; return 1;
+    }
+    else if (abs(dir-135)<=22.5 && (int)edgeMap.at<uchar>(adj.y+1, adj.x+1) > 0)
+    {
+        adj.x += 1; adj.y += 1;  return 1;
+    }
+    else if (abs(dir-180)<=22.5 && (int)edgeMap.at<uchar>(adj.y+1, adj.x) > 0)
+    {
+        adj.y += 1; return 1;
+    }
+    else if (abs(dir-225)<=22.5 && (int)edgeMap.at<uchar>(adj.y+1, adj.x-1) > 0)
+    {
+        adj.x -= 1; adj.y += 1; return 1;
+    }
+    else if (abs(dir-270)<=22.5 && (int)edgeMap.at<uchar>(adj.y, adj.x-1) > 0)
+    {
+        adj.x -= 1; return 1;
+    }
+    else
+        return -1;
 }
-void extractLineSeg(const Point &seed, vector<Point> &lineSeg, const float &direction)
+
+void extractLineSeg(const Point &seed, vector<Point> &lineSeg, const float &direction, bool reverse)
 {
     Point adj;
     adj.x = seed.x;
     adj.y = seed.y;
     float dir = direction;
-    lineSeg.push_back(seed);
     int have_adj = 1;
     while (have_adj>0)
     {
         have_adj = findAdj(adj, dir);
-        dir = dirMap.at<float>(adj.x, adj.y);
-        remove(seedlist.begin(),seedlist.end(),adj);
+        dir = dirMap.at<float>(adj.y, adj.x);
+        if (reverse)
+            dir = (dir <= 180) ? dir + 180 : dir - 180; 
+        // remove(seedlist.begin(),seedlist.end(),adj);
+        if (have_adj>0)
+            lineSeg.push_back(adj);
+        cout << "the x coordinate of the adjacent point: " << adj.x << endl; 
+        cout << "the y coordinate of the adjacent point: " << adj.y << endl;
+        cout << "the direction of the adjacent point: " << dir << endl; 
     }
 }
 
 int main(int argc, char *argv[])
 {
-    string data_dir = "/home/colin/catkin_ls_ws/src/line_segment/img/left.jpg";
+    string data_dir = "/home/lee/Sineva/LS_ELAS/line_segment/img/left.jpg";
     Mat src, src_gray;
     Mat grad;
     char* window_name = "Sobel Edge Detection";
@@ -99,7 +129,7 @@ int main(int argc, char *argv[])
     cvtColor( src, src_gray, CV_BGR2GRAY );
 
     /// Create Window
-    namedWindow( window_name, CV_WINDOW_AUTOSIZE );
+    // namedWindow( window_name, CV_WINDOW_AUTOSIZE );
 
     /// Generate grad_x and grad_y
     Mat grad_x, grad_y;
@@ -123,24 +153,42 @@ int main(int argc, char *argv[])
 
 
     edgeMap = src_gray.clone();
-    Canny( edgeMap, edgeMap, 10, 100, 3);
+    Canny( edgeMap, edgeMap, 50, 150, 3);
+    Mat ini_edge = edgeMap.clone();
     ///imshow( window_name, grad );
     ///imshow( "cart results", mat2gray(magtitude) ); 
     ///imshow( "orientation map", oriMap);
-    imshow( "canny results", edgeMap);
 
 
     cv::findNonZero(edgeMap, seedlist);
     cout << "Edge points in total: " << seedlist.size() << endl;
-
     vector<vector<Point>> lineSegments;
-    for (auto seed:seedlist)
+    for (int i = 0; i<seedlist.size(); i++)
     {
-        float direction = dirMap.at<float>(seed.x, seed.y);
+        Point seed = seedlist[i];
+
+        float direction = dirMap.at<float>(seed.y, seed.x);
+        float rev_direction = (direction<=180) ? direction+180 : direction-180;
         vector<Point> lineSeg;
-        extractLineSeg(seed, lineSeg, direction);
-        reverse(direction);
+        extractLineSeg(seed, lineSeg, direction, false);
+        extractLineSeg(seed, lineSeg, rev_direction, true);
+        cout <<  "the size of the line segments is: " << lineSegments.size() << endl;
+        if (lineSeg.size()>2)
+            lineSegments.push_back(lineSeg);
+        int rd1 = rand()%255;
+        int rd2 = rand()%255;
+        int rd3 = rand()%255;
+        for (auto point:lineSeg)
+        {
+            src.at<Vec3b>(point.y,point.x)[0] = rd1;
+            src.at<Vec3b>(point.y,point.x)[1] = rd2;
+            src.at<Vec3b>(point.y,point.x)[2] = rd3;
+        }
+            
     }
+
+
+    imshow( "segment results", src);
     waitKey(0);
     return 0;
 }

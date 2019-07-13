@@ -1,5 +1,5 @@
 # project
-cmake_minimum_required (VERSION 3.12.0)
+cmake_minimum_required (VERSION 3.5.0)
 add_compile_options(-std=c++11)
 project (line_segment)
 
