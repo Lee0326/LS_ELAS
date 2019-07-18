@@ -1,9 +1,9 @@
 %YAML:1.0
-data_dir: /home/h/SinevaRobot-BJ/Sineva_Autoware/ros/src/computing/perception/localization/packages/sineva_stereo/tests/test_data/stereo_test_image
-save_depth_dir: /home/h/SinevaRobot-BJ/Sineva_Autoware/ros/src/computing/perception/localization/packages/sineva_stereo/tests/test_data/stereo_test_image/depth
-save_disp_dir: /home/h/SinevaRobot-BJ/Sineva_Autoware/ros/src/computing/perception/localization/packages/sineva_stereo/tests/test_data/stereo_test_image/disp
-calib_file_left: /home/h/SinevaRobot-BJ/Sineva_Autoware/ros/src/computing/perception/localization/packages/sineva_stereo/config/calib_left.yml
-calib_file_right: /home/h/SinevaRobot-BJ/Sineva_Autoware/ros/src/computing/perception/localization/packages/sineva_stereo/config/calib_left.yml
+data_dir: tests/test_data/stereo_test_image
+save_depth_dir: tests/test_data/stereo_test_image/depth
+save_disp_dir: tests/test_data/stereo_test_image/disp
+calib_file_left: config/calib_left.yml
+calib_file_right: config/calib_right.yml
 baseline: 0.119170950703722
 format: png
 max_tolerate_percent: 0.1
