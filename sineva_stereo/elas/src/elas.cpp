@@ -26,10 +26,6 @@ bool Elas::process(const Mat &image_left, const Mat &image_right, Mat &disparity
   
   ExtractEdgeSegment(image_left, edgeMap, dirMap, lineSegments, width, height);
 
-  future<void> compute_support_matches = async(launch::async, [&] {
-    ComputeSupportMatches(image_left, image_right, support_points);
-  });
-
   future<void> compute_descriptor = async(launch::async, [&] {
     Descriptor descriptor_L(image_left, width, height);
     descriptor_left = descriptor_L.CreateDescriptor();
@@ -38,8 +34,14 @@ bool Elas::process(const Mat &image_left, const Mat &image_right, Mat &disparity
     descriptor_right = descriptor_R.CreateDescriptor();
   });
 
-  compute_support_matches.wait();
+  future<void> compute_support_matches = async(launch::async, [&] {
+    // ComputeSupportMatches(image_left, image_right, support_points);
+    ComputeSupportMatches(descriptor_left, descriptor_right, support_points, lineSegments, width, height);
+  });
+
+ 
   compute_descriptor.wait();
+  compute_support_matches.wait();
 
   future<void> compute_disparity_left = async(launch::async, [&] {
     ComputeDisparity(support_points, descriptor_left, descriptor_right, false, disparity_left);
@@ -193,33 +195,61 @@ void Elas::LeftRightConsistencyCheck(Mat &disparity_left, Mat &disparity_right, 
   }
 }
 
-void Elas::ComputeSupportMatches(const Mat &image_left, const Mat &image_right, vector<Point3i> &support_points)
+// void Elas::ComputeSupportMatches(const Mat &image_left, const Mat &image_right, vector<Point3i> &support_points )
+// {
+//   ORBextractor orbExtractor(20000, 1.2, 8, 20, 20);
+
+//   Mat d_descriptorsL, d_descriptorsR;
+
+//   vector<KeyPoint> keyPoints_1, keyPoints_2;
+
+//   orbExtractor(image_left, cv::Mat(), keyPoints_1, d_descriptorsL);
+//   orbExtractor(image_right, cv::Mat(), keyPoints_2, d_descriptorsR);
+
+//   Ptr<DescriptorMatcher> d_matcher = DescriptorMatcher::create(4);
+
+//   std::vector<DMatch> matches;
+
+//   d_matcher->match(d_descriptorsL, d_descriptorsR, matches);
+
+//   for (int i = 0; i < keyPoints_1.size(); i++)
+//   {
+//     if (abs(keyPoints_1[i].pt.y - keyPoints_2[matches[i].trainIdx].pt.y) < 2 && (int)keyPoints_1[i].pt.y % param_.step_size == 0)
+//     {
+//       support_points.push_back(Point3i(keyPoints_1[i].pt.x, keyPoints_1[i].pt.y,
+//                                        keyPoints_1[i].pt.x - keyPoints_2[matches[i].trainIdx].pt.x));
+//     }
+//   }
+// }
+
+void Elas::ComputeSupportMatches(const Mat &descriptor_left, const Mat &descriptor_right, vector<Point3i> &support_points, 
+vector<vector<Point>> &lineSegments, const int32_t &width, const int32_t &height)
 {
-  ORBextractor orbExtractor(20000, 1.2, 8, 20, 20);
+  int candidate_stepsize = param_.candidate_stepsize;
 
-  Mat d_descriptorsL, d_descriptorsR;
+  assert(candidate_stepsize>0);
 
-  vector<KeyPoint> keyPoints_1, keyPoints_2;
+  int d, d2;
 
-  orbExtractor(image_left, cv::Mat(), keyPoints_1, d_descriptorsL);
-  orbExtractor(image_right, cv::Mat(), keyPoints_2, d_descriptorsR);
-
-  Ptr<DescriptorMatcher> d_matcher = DescriptorMatcher::create(4);
-
-  std::vector<DMatch> matches;
-
-  d_matcher->match(d_descriptorsL, d_descriptorsR, matches);
-
-  for (int i = 0; i < keyPoints_1.size(); i++)
+  for (auto line:lineSegments)
   {
-    if (abs(keyPoints_1[i].pt.y - keyPoints_2[matches[i].trainIdx].pt.y) < 2 && (int)keyPoints_1[i].pt.y % param_.step_size == 0)
+    for (int i = candidate_stepsize; i < line.size(); i += candidate_stepsize)
     {
-      support_points.push_back(Point3i(keyPoints_1[i].pt.x, keyPoints_1[i].pt.y,
-                                       keyPoints_1[i].pt.x - keyPoints_2[matches[i].trainIdx].pt.x));
+      int u = line[i].x; 
+      int v = line[i].y;
+      d = ComputeMatchingDisparity(descriptor_left, descriptor_right, u, v, false, width, height);
+      if (d>0)
+      {
+        //find backwards
+        d2 = ComputeMatchingDisparity(descriptor_left, descriptor_right, u - d, v, false, width, height);
+        if (d2 >= 0 && abs(d-d2) <= param_.lr_threshold)
+        {
+          support_points.push_back(Point3i(u,v,d));
+        }
+      }
     }
   }
 }
-
 // vector<Point3i> Elas::ComputeSupportMatches()
 // {
 //     vector<Point3i> support_points_;
