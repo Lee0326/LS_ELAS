@@ -19,7 +19,12 @@ bool Elas::process(const Mat &image_left, const Mat &image_right, Mat &disparity
 {
   int32_t width = image_left.cols, height = image_left.rows;
   vector<Point3i> support_points;
+  vector<vector<Point>> lineSegments;
   Mat descriptor_left, descriptor_right;
+  Mat edgeMap, dirMap;
+
+  
+  ExtractEdgeSegment(image_left, edgeMap, dirMap, lineSegments, width, height);
 
   future<void> compute_support_matches = async(launch::async, [&] {
     ComputeSupportMatches(image_left, image_right, support_points);
@@ -58,6 +63,80 @@ bool Elas::process(const Mat &image_left, const Mat &image_right, Mat &disparity
   disparity_left = bilateraled_disparity_left.clone();
 
   return true;
+}
+
+void Elas::ExtractEdgeSegment(const Mat &image_left, Mat &edgeMap, Mat &dirMap, 
+vector<vector<Point>> &lineSegments, const int32_t &width, const int32_t &height)
+{
+  Mat src, grad_x, grad_y, magtitude;
+  vector<Point> seedlist;
+  bool useDegree = true; 
+  int scale = 1;
+  int delta = 0;
+  int ddepth = CV_32F;
+  src = image_left.clone();
+
+  GaussianBlur(src, src, Size(3,3), 0, 0, BORDER_DEFAULT);
+  cvtColor(src, edgeMap, CV_BGR2GRAY);
+  Sobel( edgeMap, grad_x, ddepth, 1, 0, 3, scale, delta, BORDER_DEFAULT );
+  Sobel( edgeMap, grad_y, ddepth, 0, 1, 3, scale, delta, BORDER_DEFAULT );
+  cartToPolar(grad_x, grad_y, magtitude, dirMap, useDegree);
+  Canny( edgeMap, edgeMap, 5, 50, 3);
+  findNonZero(edgeMap, seedlist);
+  cout << "Edge points in total: " << seedlist.size() << endl;
+  for (int i = 0; i<seedlist.size(); i++)
+  {
+    Point seed = seedlist[i];
+    float direction = dirMap.at<float>(seed.y, seed.x);
+    float rev_direction = (direction<=180) ? direction+180 : direction-180;
+    vector<Point> lineSeg;
+    ExtractLineSeg(seed, lineSeg, direction, false, edgeMap, dirMap, width, height);
+    //extractLineSeg(seed, lineSeg, rev_direction, true, edgeMap);
+    if (lineSeg.size()>20)
+      lineSegments.push_back(lineSeg);
+    }
+}
+
+void Elas::ExtractLineSeg(const Point &seed, vector<Point> &lineSeg, const float &direction, 
+bool reverse, Mat &edgeMap, const Mat &dirMap, const int32_t &width, const int32_t &height)
+{
+    Point adj;
+    adj.x = seed.x;
+    adj.y = seed.y;
+    float dir = direction;
+    int have_adj = 1;     
+    while (have_adj>0)
+    {       
+        have_adj = findAdj(adj, dir, edgeMap, width, height);
+        dir = dirMap.at<float>(adj.y, adj.x);
+        if (reverse)
+            dir = (dir <= 180) ? dir + 180 : dir - 180; 
+        if (have_adj>0)
+            lineSeg.push_back(adj);
+    }
+}
+
+int Elas::findAdj(Point &adj, float dir, Mat &edgeMap, const int32_t &width, const int32_t &height)
+{
+    edgeMap.at<uchar>(adj.y, adj.x) = 0;
+    vector<Point> adjcentPoints(8,adj);
+    adjcentPoints[0].y -= 1;adjcentPoints[1].x += 1;
+    adjcentPoints[1].y -= 1;adjcentPoints[2].x += 1;
+    adjcentPoints[3].x += 1;adjcentPoints[3].y += 1;
+    adjcentPoints[4].y += 1;adjcentPoints[5].x -= 1;
+    adjcentPoints[5].y += 1;adjcentPoints[6].x -= 1;
+    adjcentPoints[7].x -= 1;adjcentPoints[7].y -= 1;
+    for (int i=0; i<adjcentPoints.size(); i++)
+    {
+        Point adjpt = adjcentPoints[i];
+        if ((int)edgeMap.at<uchar>(adjpt.y, adjpt.x) > 0 && (adjpt.x > 0) && (adjpt.x < width) && (adjpt.y>0) && (adjpt.y < height))
+        {
+            adj.x = adjpt.x;
+            adj.y = adjpt.y;
+            return 1;
+        }
+    }
+    return -1;
 }
 
 void Elas::ComputeDisparity(vector<Point3i> support_points, const Mat &descriptor_left, const Mat &descriptor_right,
@@ -141,6 +220,120 @@ void Elas::ComputeSupportMatches(const Mat &image_left, const Mat &image_right, 
   }
 }
 
+// vector<Point3i> Elas::ComputeSupportMatches()
+// {
+//     vector<Point3i> support_points_;
+//     int candidate_stepsize = param_.candidate_stepsize;
+
+//     assert(candidate_stepsize > 0);
+
+//     Mat D_can(ceil(height_ / candidate_stepsize), ceil(width_ / candidate_stepsize), CV_16S, -1);
+//     // Mat D_can(height_ / candidate_stepsize, width_ / candidate_stepsize, CV_16S, -1);
+
+//     int d, d2;
+
+//     for (int v = candidate_stepsize; v < height_; v += candidate_stepsize)
+//     {
+//         for (int u = candidate_stepsize; u < width_; u += candidate_stepsize)
+//         {
+//             d = ComputeMatchingDisparity(u, v, false);
+
+//             if (d >= 0)
+//             {
+//                 // find backwards
+//                 d2 = ComputeMatchingDisparity(u - d, v, true);
+//                 if (d2 >= 0 && abs(d - d2) <= param_.lr_threshold)
+//                 {
+//                     D_can.at<short>(v / candidate_stepsize, u / candidate_stepsize) = d;
+//                     // if (v < 20)
+//                     //     cout << u << " " << v << " " << u - d << endl;
+//                     support_points_.push_back(Point3i(u, v, d));
+//                 }
+//             }
+//         }
+//     }
+//     return support_points_;
+// }
+int Elas::ComputeMatchingDisparity(const Mat &descriptor_left, const Mat &descriptor_right, const int &u, const int &v, 
+const bool &right_image, const int32_t &width, const int32_t &height)
+{
+    if (u < 0 || u > width || v < 0 || v > height)
+        return -1;
+
+    const int up_shift = (v - 1) * width + u;
+    const int left_shift = v * width + u - 1;
+    const int right_shift = v * width + u + 1;
+    const int bottom_shift = (v + 1) * width + u;
+
+    int disp_min_valid = max(param_.disp_min, 0);
+    int disp_max_valid = param_.disp_max;
+
+    if (right_image)
+        disp_max_valid = min(param_.disp_max, width - u);
+    else
+        disp_max_valid = min(param_.disp_max, u);
+
+    const uchar *left_up, *left_left, *left_right, *left_bottom, *right_up, *right_left, *right_right, *right_bottom;
+    int sum, min_energy = INT_MAX, sec_min_energy = INT_MAX, min_disparity = -1, sec_min_disparity = -1;
+
+    for (int d = disp_min_valid; d <= disp_max_valid; ++d)
+    {
+        if (right_image)
+        {
+            left_up = descriptor_left.ptr<uchar>(up_shift + d);
+            left_left = descriptor_left.ptr<uchar>(left_shift + d);
+            left_right = descriptor_left.ptr<uchar>(right_shift + d);
+            left_bottom = descriptor_left.ptr<uchar>(bottom_shift + d);
+
+            right_up = descriptor_left.ptr<uchar>(up_shift);
+            right_left = descriptor_left.ptr<uchar>(left_shift);
+            right_right = descriptor_left.ptr<uchar>(right_shift);
+            right_bottom = descriptor_left.ptr<uchar>(bottom_shift);
+        }
+        else
+        {
+            left_up = descriptor_left.ptr<uchar>(up_shift);
+            left_left = descriptor_left.ptr<uchar>(left_shift);
+            left_right = descriptor_left.ptr<uchar>(right_shift);
+            left_bottom = descriptor_left.ptr<uchar>(bottom_shift);
+
+            right_up = descriptor_left.ptr<uchar>(up_shift - d);
+            right_left = descriptor_left.ptr<uchar>(left_shift - d);
+            right_right = descriptor_left.ptr<uchar>(right_shift - d);
+            right_bottom = descriptor_left.ptr<uchar>(bottom_shift - d);
+        }
+
+        sum = 0;
+        for (int i = 0; i < 16; ++i)
+        {
+            sum += abs(left_up[i] - right_up[i]);
+            sum += abs(left_left[i] - right_left[i]);
+            sum += abs(left_right[i] - right_right[i]);
+            sum += abs(left_bottom[i] - right_bottom[i]);
+        }
+
+        if (sum == 0)
+            continue;
+
+        if (sum < min_energy)
+        {
+            sec_min_energy = min_energy;
+            sec_min_disparity = min_disparity;
+            min_energy = sum;
+            min_disparity = d;
+        }
+        else if (sum < sec_min_energy)
+        {
+            sec_min_energy = sum;
+            sec_min_disparity = d;
+        }
+    }
+
+    if (min_disparity >= 0 && sec_min_disparity >= 0 && (float)min_energy < param_.support_threshold * (float)sec_min_energy)
+        return min_disparity;
+    else
+        return -1;
+}
 vector<Vec6f>
 Elas::ComputeDelaunayTriangulation(const vector<Point3i> &support_points, const bool &right_image, const int32_t &width,
                                    const int32_t &height)

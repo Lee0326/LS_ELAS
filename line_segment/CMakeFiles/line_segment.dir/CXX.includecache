@@ -1,4 +1,4 @@
-#IncludeRegexLine: ^[ 	]*#[ 	]*(include|import)[ 	]*[<"]([^">]+)([">])
+#IncludeRegexLine: ^[ 	]*[#%][ 	]*(include|import)[ 	]*[<"]([^">]+)([">])
 
 #IncludeRegexScan: ^.*$
 
@@ -6,11 +6,11 @@
 
 #IncludeRegexTransform: 
 
-/home/lee/Sineva/LS_ELAS/line_segment/src/main.cpp
+/home/colin/catkin_ls_ws/src/line_segment/src/main.cpp
 opencv2/imgproc/imgproc.hpp
-/home/lee/Sineva/LS_ELAS/line_segment/src/opencv2/imgproc/imgproc.hpp
+/home/colin/catkin_ls_ws/src/line_segment/src/opencv2/imgproc/imgproc.hpp
 opencv2/highgui/highgui.hpp
-/home/lee/Sineva/LS_ELAS/line_segment/src/opencv2/highgui/highgui.hpp
+/home/colin/catkin_ls_ws/src/line_segment/src/opencv2/highgui/highgui.hpp
 stdlib.h
 -
 stdio.h

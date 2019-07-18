@@ -33,6 +33,7 @@ public:
         int32_t lr_threshold = 1;        // disparity threshold for left/right consistency check
         int32_t speckle_size = 200;      // maximal size of a speckle (small speckles get removed)
         int32_t ipol_gap_width = 10;     // interpolate small gaps (left<->right, top<->bottom)
+        float support_threshold = 0.9;   // max. uniqueness ratio (best vs. second best support match)
     };
 
     // constructor, input: parameters
@@ -50,6 +51,17 @@ public:
     void ComputeSupportMatches(const Mat &image_left, const Mat &image_right, vector<Point3i> &support_points);
 
 private:
+
+    void ExtractEdgeSegment(const Mat &image_left, Mat &edgeMap, Mat &dirMap, vector<vector<Point>> &lineSegments, const int32_t &width, const int32_t &height);
+
+    void ExtractLineSeg(const Point &seed, vector<Point> &lineSeg, const float &direction, bool reverse, Mat &edgeMap, const Mat &dirMap,
+    const int32_t &width, const int32_t &height);
+
+    int findAdj(Point &adj, float dir, Mat &edgeMap, const int32_t &width, const int32_t &height);
+    
+    int ComputeMatchingDisparity(const Mat &descriptor_left, const Mat &descriptor_right, const int &u, const int &v, 
+    const bool &right_image, const int32_t &width, const int32_t &height);
+
     vector<Vec6f>
     ComputeDelaunayTriangulation(const vector<Point3i> &support_points, const bool &right_image, const int32_t &width,
                                  const int32_t &height);
@@ -80,6 +92,8 @@ private:
 
     // parameter set
     parameters param_;
+
+    
 
 };
 

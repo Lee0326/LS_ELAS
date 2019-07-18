@@ -9,6 +9,8 @@ using namespace std;
 
 Mat edgeMap, dirMap ,dst;
 vector<Point> seedlist;
+int height;
+int width;
 
 Mat mat2gray(const cv::Mat& src)
 {
@@ -46,70 +48,118 @@ Mat orientationMap(const cv::Mat& mag, const cv::Mat& ori, double thresh = 1.0)
 }
 
 
-int findAdj(Point &adj, float dir)
+// int findAdj(Point &adj, float dir, Mat &edgeMap)
+// {
+//     edgeMap.at<uchar>(adj.y, adj.x) = 0;
+//     if (abs(dir-45)<=22.5 )
+//     {
+//         if ((int)edgeMap.at<uchar>(adj.y-1, adj.x+1) > 0)
+//         {
+//             adj.x += 1; adj.y -= 1; return 1;
+//         }   
+//         else if ((int)edgeMap.at<uchar>(adj.y-1, adj.x) > 0)
+//         {
+//             adj.y -= 1; return 1;
+//         }
+//         else if ((int)edgeMap.at<uchar>(adj.y, adj.x+1) > 0)
+//         {
+//             adj.x += 1; return 1;
+//         }
+//         else return -1;
+            
+//     }
+//     else if ((dir<22.5 || dir >337.5) && (int)edgeMap.at<uchar>(adj.y-1, adj.x) > 0)
+//     {
+//         adj.y -= 1; return 1;
+//         cout << "normal!" << endl;
+//     }
+//     else if (abs(dir-315)<=22.5 && (int)edgeMap.at<uchar>(adj.y-1, adj.x-1) > 0)
+//     {
+//         adj.x -= 1; adj.y -= 1; return 1;
+//         cout << "normal!" << endl;
+//     }
+//     else if (abs(dir-90)<=22.5 && (int)edgeMap.at<uchar>(adj.y, adj.x+1) > 0)
+//     {
+//         adj.x += 1; return 1;
+//         cout << "normal!" << endl;
+//     }
+//     else if (abs(dir-135)<=22.5 && (int)edgeMap.at<uchar>(adj.y+1, adj.x+1) > 0)
+//     {
+//         adj.x += 1; adj.y += 1;  return 1;
+//     }
+//     else if (abs(dir-180)<=22.5 && (int)edgeMap.at<uchar>(adj.y+1, adj.x) > 0)
+//     {
+//         adj.y += 1; return 1;
+//     }
+//     else if (abs(dir-225)<=22.5 && (int)edgeMap.at<uchar>(adj.y+1, adj.x-1) > 0)
+//     {
+//         adj.x -= 1; adj.y += 1; return 1;
+//     }
+//     else if (abs(dir-270)<=22.5 && (int)edgeMap.at<uchar>(adj.y, adj.x-1) > 0)
+//     {
+//         adj.x -= 1; return 1;
+//     }
+//     else
+//         return -1;
+// }
+
+int findAdj(Point &adj, float dir, Mat &edgeMap)
 {
     edgeMap.at<uchar>(adj.y, adj.x) = 0;
-    if (abs(dir-45)<=22.5 && (int)edgeMap.at<uchar>(adj.y-1, adj.x-1) > 0 )
+    vector<Point> adjcentPoints(8,adj);
+    adjcentPoints[0].y -= 1;adjcentPoints[1].x += 1;
+    adjcentPoints[1].y -= 1;adjcentPoints[2].x += 1;
+    adjcentPoints[3].x += 1;adjcentPoints[3].y += 1;
+    adjcentPoints[4].y += 1;adjcentPoints[5].x -= 1;
+    adjcentPoints[5].y += 1;adjcentPoints[6].x -= 1;
+    adjcentPoints[7].x -= 1;adjcentPoints[7].y -= 1;
+    for (int i=0; i<adjcentPoints.size(); i++)
     {
-        adj.x -= 1; adj.y -= 1; return 1;
+        Point adjpt = adjcentPoints[i];
+        if ((int)edgeMap.at<uchar>(adjpt.y, adjpt.x) > 0 && (adjpt.x > 0) && (adjpt.x < width) && (adjpt.y>0) && (adjpt.y < height))
+        {
+            //edgeMap.at<uchar>(adjpt.y, adjpt.x) = 0;
+            adj.x = adjpt.x;
+            adj.y = adjpt.y;
+            //cout << "the index: " << i << endl;
+            return 1;
+        }
     }
-    else if ((dir<22.5 || dir >337.5) && (int)edgeMap.at<uchar>(adj.y-1, adj.x) > 0)
-    {
-        adj.y -= 1; return 1;
-    }
-    else if (abs(dir-315)<=22.5 && (int)edgeMap.at<uchar>(adj.y-1, adj.x+1) > 0)
-    {
-        adj.x += 1; adj.y -= 1; return 1;
-    }
-    else if (abs(dir-90)<=22.5 && (int)edgeMap.at<uchar>(adj.y, adj.x+1) > 0)
-    {
-        adj.x += 1; return 1;
-    }
-    else if (abs(dir-135)<=22.5 && (int)edgeMap.at<uchar>(adj.y+1, adj.x+1) > 0)
-    {
-        adj.x += 1; adj.y += 1;  return 1;
-    }
-    else if (abs(dir-180)<=22.5 && (int)edgeMap.at<uchar>(adj.y+1, adj.x) > 0)
-    {
-        adj.y += 1; return 1;
-    }
-    else if (abs(dir-225)<=22.5 && (int)edgeMap.at<uchar>(adj.y+1, adj.x-1) > 0)
-    {
-        adj.x -= 1; adj.y += 1; return 1;
-    }
-    else if (abs(dir-270)<=22.5 && (int)edgeMap.at<uchar>(adj.y, adj.x-1) > 0)
-    {
-        adj.x -= 1; return 1;
-    }
-    else
-        return -1;
+    return -1;
 }
 
-void extractLineSeg(const Point &seed, vector<Point> &lineSeg, const float &direction, bool reverse)
+
+void extractLineSeg(const Point &seed, vector<Point> &lineSeg, const float &direction, bool reverse, Mat &edgeMap)
 {
     Point adj;
     adj.x = seed.x;
     adj.y = seed.y;
     float dir = direction;
-    int have_adj = 1;
+    int have_adj = 1;     
     while (have_adj>0)
     {
-        have_adj = findAdj(adj, dir);
+        
+        have_adj = findAdj(adj, dir, edgeMap);
         dir = dirMap.at<float>(adj.y, adj.x);
         if (reverse)
             dir = (dir <= 180) ? dir + 180 : dir - 180; 
-        // remove(seedlist.begin(),seedlist.end(),adj);
+        //remove(seedlist.begin(),seedlist.end(),adj);
         if (have_adj>0)
             lineSeg.push_back(adj);
-        cout << "the x coordinate of the adjacent point: " << adj.x << endl; 
-        cout << "the y coordinate of the adjacent point: " << adj.y << endl;
-        cout << "the direction of the adjacent point: " << dir << endl; 
+        // cout << "the x coordinate of the adjacent point: " << adj.x << endl; 
+        // cout << "the y coordinate of the adjacent point: " << adj.y << endl;
+        // cout << "the direction of the adjacent point: " << dir << endl; 
+        // cout << "the value of the adjacent point: " << (int)edgeMap.at<uchar>(adj.y,adj.x) << endl;
     }
 }
 
 int main(int argc, char *argv[])
 {
+<<<<<<< HEAD
     string data_dir = "/home/lee/Sineva/LS_ELAS/line_segment/img/baby1.png";
+=======
+    string data_dir = "/home/colin/catkin_ls_ws/src/line_segment/img/baby1.png";
+>>>>>>> origin/master
     Mat src, src_gray;
     Mat grad;
     char* window_name = "Sobel Edge Detection";
@@ -121,10 +171,13 @@ int main(int argc, char *argv[])
 
     // Load an image
     src = imread( data_dir );
+    height = src.rows;
+    width = src.cols;
 
     if ( !src.data )
     { return -1; }
     /// Convert the image to gray
+    double t = (double)cv::getTickCount();
     GaussianBlur( src, src, Size(3,3), 0, 0, BORDER_DEFAULT); 
     cvtColor( src, src_gray, CV_BGR2GRAY );
 
@@ -153,7 +206,7 @@ int main(int argc, char *argv[])
 
 
     edgeMap = src_gray.clone();
-    Canny( edgeMap, edgeMap, 50, 150, 3);
+    Canny( edgeMap, edgeMap, 5, 50, 3);
     Mat ini_edge = edgeMap.clone();
     ///imshow( window_name, grad );
     ///imshow( "cart results", mat2gray(magtitude) ); 
@@ -170,25 +223,33 @@ int main(int argc, char *argv[])
         float direction = dirMap.at<float>(seed.y, seed.x);
         float rev_direction = (direction<=180) ? direction+180 : direction-180;
         vector<Point> lineSeg;
-        extractLineSeg(seed, lineSeg, direction, false);
-        extractLineSeg(seed, lineSeg, rev_direction, true);
-        cout <<  "the size of the line segments is: " << lineSegments.size() << endl;
-        if (lineSeg.size()>2)
+        extractLineSeg(seed, lineSeg, direction, false, edgeMap);
+        //extractLineSeg(seed, lineSeg, rev_direction, true, edgeMap);
+        // cout <<  "the size of the line segments is: " << lineSegments.size() << endl;
+        if (lineSeg.size()>20)
             lineSegments.push_back(lineSeg);
+
+    }
+    for (auto line:lineSegments)
+    {
         int rd1 = rand()%255;
         int rd2 = rand()%255;
         int rd3 = rand()%255;
-        for (auto point:lineSeg)
+        for (auto point:line)
         {
-            src.at<Vec3b>(point.y,point.x)[0] = rd1;
+            src.at<Vec3b>(point.y,point.x)[0] = rd3;
             src.at<Vec3b>(point.y,point.x)[1] = rd2;
-            src.at<Vec3b>(point.y,point.x)[2] = rd3;
+            src.at<Vec3b>(point.y,point.x)[2] = rd1;
         }
-            
     }
 
 
+    t = ((double)cv::getTickCount()-t)/cv::getTickFrequency();
+    cout << "There are " << lineSegments.size() << " line segments in total" << endl;
+    cout << "The line segment process took " << 1000*t << "ms" <<endl;
+
     imshow( "segment results", src);
+    imshow( "edge results", ini_edge);
     waitKey(0);
     return 0;
 }
