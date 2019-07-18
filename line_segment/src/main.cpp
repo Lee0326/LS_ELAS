@@ -109,7 +109,7 @@ void extractLineSeg(const Point &seed, vector<Point> &lineSeg, const float &dire
 
 int main(int argc, char *argv[])
 {
-    string data_dir = "/home/lee/Sineva/LS_ELAS/line_segment/img/left.jpg";
+    string data_dir = "/home/lee/Sineva/LS_ELAS/line_segment/img/baby1.png";
     Mat src, src_gray;
     Mat grad;
     char* window_name = "Sobel Edge Detection";
