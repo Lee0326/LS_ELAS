@@ -26,7 +26,7 @@ public:
         int32_t disp_max = 255;          // max disparity
         int32_t grid_size = 20;          // size of neighborhood for additional support point extrapolation
         int32_t step_size = 2;
-        int32_t candidate_stepsize = 3;  // step size of regular grid on which support points are matched
+        int32_t candidate_stepsize = 1;  // step size of regular grid on which support points are matched
         float beta = 0.02;               // image likelihood parameter
         float gamma = 3;                 // prior constant
         float sigma = 1;                 // prior sigma
@@ -98,10 +98,7 @@ private:
     void ComputeDisparity(vector<Point3i> support_points, const Mat &descriptor_left, const Mat &descriptor_right, const bool &is_right_image, Mat &disparity);
 
     // parameter set
-    parameters param_;
-
-    
-
+    parameters param_;  
 };
 
 #endif // SINEVA_AUTOWARE_ROS_SRC_COMPUTING_PERCEPTION_LOCALIZATION_PACKAGES_SINEVA_STEREO_INCLUDE_ELAS_H_

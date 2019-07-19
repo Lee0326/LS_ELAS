@@ -7,8 +7,8 @@
 #include <vector>
 #include <future>
 
-#include "../include/elas.h"
-#include "../include/descriptor.h"
+#include "elas.h"
+#include "descriptor.h"
 #include "boost/progress.hpp"
 
 using namespace std;
@@ -25,23 +25,30 @@ bool Elas::process(const Mat &image_left, const Mat &image_right, Mat &disparity
 
   
   ExtractEdgeSegment(image_left, edgeMap, dirMap, lineSegments, width, height);
+  cout << "there are " << lineSegments.size() << " line segments in total." << endl;
+  // future<void> compute_descriptor = async(launch::async, [&] {
+  //   Descriptor descriptor_L(image_left, width, height);
+  //   descriptor_left = descriptor_L.CreateDescriptor();
 
-  future<void> compute_descriptor = async(launch::async, [&] {
-    Descriptor descriptor_L(image_left, width, height);
-    descriptor_left = descriptor_L.CreateDescriptor();
+  //   Descriptor descriptor_R(image_right, width, height);
+  //   descriptor_right = descriptor_R.CreateDescriptor();
+  // });
 
-    Descriptor descriptor_R(image_right, width, height);
-    descriptor_right = descriptor_R.CreateDescriptor();
-  });
+  // future<void> compute_support_matches = async(launch::async, [&] {
+  //   // ComputeSupportMatches(image_left, image_right, support_points);
+  //   ComputeSupportMatches(descriptor_left, descriptor_right, support_points, lineSegments, width, height);
+  // });
+  Descriptor descriptor_L(image_left, width, height);
+  descriptor_left = descriptor_L.CreateDescriptor();
+  cout << "the size of the descriptor is: " << descriptor_left.size() << endl;
 
-  future<void> compute_support_matches = async(launch::async, [&] {
-    // ComputeSupportMatches(image_left, image_right, support_points);
-    ComputeSupportMatches(descriptor_left, descriptor_right, support_points, lineSegments, width, height);
-  });
+  Descriptor descriptor_R(image_right, width, height);
+  descriptor_right = descriptor_R.CreateDescriptor();
 
- 
-  compute_descriptor.wait();
-  compute_support_matches.wait();
+  ComputeSupportMatches(descriptor_left, descriptor_right, support_points, lineSegments, width, height);
+  cout << "there are " << support_points.size() << " support points in total." << endl;
+  // compute_descriptor.wait();
+  // compute_support_matches.wait();
 
   future<void> compute_disparity_left = async(launch::async, [&] {
     ComputeDisparity(support_points, descriptor_left, descriptor_right, false, disparity_left);
@@ -78,8 +85,8 @@ vector<vector<Point>> &lineSegments, const int32_t &width, const int32_t &height
   int ddepth = CV_32F;
   src = image_left.clone();
 
-  GaussianBlur(src, src, Size(3,3), 0, 0, BORDER_DEFAULT);
-  cvtColor(src, edgeMap, CV_BGR2GRAY);
+  GaussianBlur(src, edgeMap, Size(3,3), 0, 0, BORDER_DEFAULT);
+  //cvtColor(src, edgeMap, CV_BGR2GRAY);
   Sobel( edgeMap, grad_x, ddepth, 1, 0, 3, scale, delta, BORDER_DEFAULT );
   Sobel( edgeMap, grad_y, ddepth, 0, 1, 3, scale, delta, BORDER_DEFAULT );
   cartToPolar(grad_x, grad_y, magtitude, dirMap, useDegree);
@@ -96,7 +103,7 @@ vector<vector<Point>> &lineSegments, const int32_t &width, const int32_t &height
     //extractLineSeg(seed, lineSeg, rev_direction, true, edgeMap);
     if (lineSeg.size()>20)
       lineSegments.push_back(lineSeg);
-    }
+  } 
 }
 
 void Elas::ExtractLineSeg(const Point &seed, vector<Point> &lineSeg, const float &direction, 
@@ -115,6 +122,9 @@ bool reverse, Mat &edgeMap, const Mat &dirMap, const int32_t &width, const int32
             dir = (dir <= 180) ? dir + 180 : dir - 180; 
         if (have_adj>0)
             lineSeg.push_back(adj);
+        // cout << "the x coordinate of the adjacent point: " << adj.x << endl;
+        // cout << "the y coordinate of the adjacent point: " << adj.y << endl;
+
     }
 }
 
@@ -230,20 +240,27 @@ vector<vector<Point>> &lineSegments, const int32_t &width, const int32_t &height
   assert(candidate_stepsize>0);
 
   int d, d2;
-
+  int ind = 0; 
   for (auto line:lineSegments)
   {
+    ind ++;
+    // cout << "the line size is "<< line.size() <<"\n and the loop num is "<< ind << endl;
+    
     for (int i = candidate_stepsize; i < line.size(); i += candidate_stepsize)
     {
+      // cout << "the index of the line: " << i << endl; 
       int u = line[i].x; 
       int v = line[i].y;
       d = ComputeMatchingDisparity(descriptor_left, descriptor_right, u, v, false, width, height);
       if (d>0)
       {
         //find backwards
-        d2 = ComputeMatchingDisparity(descriptor_left, descriptor_right, u - d, v, false, width, height);
+        d2 = ComputeMatchingDisparity(descriptor_left, descriptor_right, u - d, v, true, width, height);
+        // cout << "the x coordinate is: "<< u << " and the y coordinate is: " << v << endl;
+        // cout << "the disparity is "<< d2 << endl;
         if (d2 >= 0 && abs(d-d2) <= param_.lr_threshold)
         {
+          // cout << "the disparity is valid!" << endl;
           support_points.push_back(Point3i(u,v,d));
         }
       }
@@ -289,7 +306,7 @@ vector<vector<Point>> &lineSegments, const int32_t &width, const int32_t &height
 int Elas::ComputeMatchingDisparity(const Mat &descriptor_left, const Mat &descriptor_right, const int &u, const int &v, 
 const bool &right_image, const int32_t &width, const int32_t &height)
 {
-    if (u < 0 || u > width || v < 0 || v > height)
+    if (u < 1 || u > width-2 || v < 1 || v > height-2)
         return -1;
 
     const int up_shift = (v - 1) * width + u;
