@@ -155,7 +155,7 @@ void extractLineSeg(const Point &seed, vector<Point> &lineSeg, const float &dire
 
 int main(int argc, char *argv[])
 {
-    string data_dir = "/home/lee/Sineva/LS_ELAS/line_segment/img/baby1.png";
+    string data_dir = "/home/colin/catkin_ls_ws/src/line_segment/img/im2.png";
 
     Mat src, src_gray;
     Mat grad;

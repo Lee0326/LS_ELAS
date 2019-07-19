@@ -7,8 +7,8 @@
 #include <vector>
 #include <future>
 
-#include "elas.h"
-#include "descriptor.h"
+#include "../include/elas.h"
+#include "../include/descriptor.h"
 #include "boost/progress.hpp"
 
 using namespace std;
