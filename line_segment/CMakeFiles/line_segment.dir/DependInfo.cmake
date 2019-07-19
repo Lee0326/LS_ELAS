@@ -4,7 +4,7 @@ set(CMAKE_DEPENDS_LANGUAGES
   )
 # The set of files for implicit dependencies of each language:
 set(CMAKE_DEPENDS_CHECK_CXX
-  "/home/colin/catkin_ls_ws/src/line_segment/src/main.cpp" "/home/colin/catkin_ls_ws/src/line_segment/CMakeFiles/line_segment.dir/src/main.cpp.o"
+  "/home/lee/Sineva/LS_ELAS/line_segment/src/main.cpp" "/home/lee/Sineva/LS_ELAS/line_segment/CMakeFiles/line_segment.dir/src/main.cpp.o"
   )
 set(CMAKE_CXX_COMPILER_ID "GNU")
 
