@@ -219,7 +219,7 @@ void Elas::ComputeSupportMatches(const Mat &image_left, const Mat &image_right, 
     }
   }
 }
-
+void Elas::ComputeSupportMatches(const Mat &image_left, const Mat &image_right, vector<>)
 // vector<Point3i> Elas::ComputeSupportMatches()
 // {
 //     vector<Point3i> support_points_;
@@ -254,6 +254,7 @@ void Elas::ComputeSupportMatches(const Mat &image_left, const Mat &image_right, 
 //     }
 //     return support_points_;
 // }
+
 int Elas::ComputeMatchingDisparity(const Mat &descriptor_left, const Mat &descriptor_right, const int &u, const int &v, 
 const bool &right_image, const int32_t &width, const int32_t &height)
 {
