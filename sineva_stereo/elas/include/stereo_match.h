@@ -12,7 +12,7 @@ class StereoMatch
   explicit StereoMatch(Elas::parameters &param) : mParam(param) {}
   ~StereoMatch() {}
 
-  cv::Mat run(const cv::Mat &left, const cv::Mat &right);
+  cv::Mat run(cv::Mat &left, const cv::Mat &right);
   cv::Mat convertDisparityToDepth(const cv::Mat &disp, const float &baseline, const float &fx);
 
  public:

@@ -8,7 +8,6 @@
 
 #include <opencv2/core/mat.hpp>
 #include <opencv2/opencv.hpp>
-#include <Fade_2D.h>
 
 #include <iostream>
 #include <vector>
@@ -16,7 +15,6 @@
 
 using namespace cv;
 using namespace std;
-using namespace GEOM_FADE2D;
 
 class Elas
 {
@@ -28,7 +26,7 @@ public:
         int32_t disp_max = 255;          // max disparity
         int32_t grid_size = 20;          // size of neighborhood for additional support point extrapolation
         int32_t step_size = 2;
-        int32_t candidate_stepsize = 5;  // step size of regular grid on which support points are matched
+        int32_t candidate_stepsize = 1;  // step size of regular grid on which support points are matched
         float beta = 0.02;               // image likelihood parameter
         float gamma = 3;                 // prior constant
         float sigma = 1;                 // prior sigma
@@ -36,7 +34,7 @@ public:
         int32_t lr_threshold = 1;        // disparity threshold for left/right consistency check
         int32_t speckle_size = 200;      // maximal size of a speckle (small speckles get removed)
         int32_t ipol_gap_width = 10;     // interpolate small gaps (left<->right, top<->bottom)
-        float support_threshold = 0.90;   // max. uniqueness ratio (best vs. second best support match)
+        float support_threshold = 0.9;   // max. uniqueness ratio (best vs. second best support match)
 
     };
 
@@ -50,22 +48,23 @@ public:
     {
     }
 
-    bool process(Mat &image_left, const Mat &image_right, Mat &disparity_left, Mat &disparity_right);
+    bool process(const Mat &image_left, const Mat &image_right, Mat &disparity_left, Mat &disparity_right);
 
-    // use orb to match support points
-    void ComputeSupportMatches(const Mat &image_left, const Mat &image_right, const vector<vector<Point>> &lineSegments_left, const vector<vector<Point>> &lineSegments_right, 
-    vector<Point3i> &support_points, vector<Segment2> &vSegments);
+    //void ComputeSupportMatches(const Mat &image_left, const Mat &image_right, vector<Point3i> &support_points);
+
+    void ComputeSupportMatches(const Mat &descriptor_left, const Mat &descriptor_right, vector<Point3i> &support_points, 
+    vector<vector<Point>> &line_segments, const int32_t &width, const int32_t &height);
 
 
 
 private:
 
-    void ExtractEdgeSegment(const Mat &image_left, Mat &edgeMap, Mat &dirMap, vector<vector<Point>> &lineSegments, const int32_t &width, const int32_t &height);
+    void ExtractEdgeSegment(const Mat &image_left, Mat &edge_map, Mat &dir_map, vector<vector<Point>> &line_segments, const int32_t &width, const int32_t &height);
 
-    void ExtractLineSeg(const Point &seed, vector<Point> &lineSeg, const float &direction, bool reverse, Mat &edgeMap, const Mat &dirMap,
+    void ExtractLineSeg(const Point &seed, vector<Point> &lineSeg, const float &direction, bool reverse, Mat &edge_map, const Mat &dir_map,
     const int32_t &width, const int32_t &height);
 
-    int findAdj(Point &adj, float dir, Mat &edgeMap, const int32_t &width, const int32_t &height);
+    int FindAdj(Point &adj, float dir, Mat &edge_map, const int32_t &width, const int32_t &height);
     
     int ComputeMatchingDisparity(const Mat &descriptor_left, const Mat &descriptor_right, const int &u, const int &v, 
     const bool &right_image, const int32_t &width, const int32_t &height);
@@ -73,10 +72,6 @@ private:
     vector<Vec6f>
     ComputeDelaunayTriangulation(const vector<Point3i> &support_points, const bool &right_image, const int32_t &width,
                                  const int32_t &height);
-    vector<Vec6f>
-    ComputeConstrainedDelaunayTriangulation(vector<Triangle2*> &vAllTriangles, const bool &right_image, const int32_t &width,
-                                const int32_t &height);
-
 
     vector<Vec6f> ComputeDisparityPlanes(const vector<Point3i> &support_points, const vector<Vec6f> &triangulate_points,
                                          vector<Vec3d> &triangulate_d,
@@ -100,7 +95,7 @@ private:
 
     void LeftRightConsistencyCheck(Mat &disparity_left, Mat &disparity_right, const int& lr_threshold);
 
-    void ComputeDisparity(Mat &image_left, vector<Point3i> support_points, const Mat &descriptor_left, const Mat &descriptor_right, const bool &is_right_image, Mat &disparity, vector<Segment2> &vSegments);
+    void ComputeDisparity(vector<Point3i> support_points, const Mat &descriptor_left, const Mat &descriptor_right, const bool &is_right_image, Mat &disparity);
 
     // parameter set
     parameters param_;  

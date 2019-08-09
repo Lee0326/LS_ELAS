@@ -1,8 +1,6 @@
 cmake_minimum_required(VERSION 2.8.3)
 project(sineva_stereo)
 add_compile_options(-std=c++11)
-add_compile_options(-O3)
-add_compile_options("$<$<CONFIG:RELEASE>: -O3>")
 
 find_package(PkgConfig)
 find_package(Boost COMPONENTS program_options system REQUIRED)
@@ -18,6 +16,7 @@ find_package(catkin REQUIRED
 catkin_package()
 
 set(LIBRARY_OUTPUT_PATH ${PROJECT_SOURCE_DIR}/lib)
+set (INC_DIR /usr/local/include/include_fade2d)
 
 add_library(elas SHARED
   elas/src/descriptor.cpp
@@ -38,6 +37,7 @@ include_directories(
   ${OpenCV_INCLUDE_DIRS}
   ${Boost_INCLUDE_DIR}
   ${EIGEN3_INCLUDE_DIR}
+  ${INC_DIR}
 )
 
 add_library(stereo_rectify SHARED
@@ -48,6 +48,7 @@ target_link_libraries(stereo_rectify
   ${catkin_LIBRARIES}
   ${OpenCV_LIBS}
   elas
+  libfade2d.so
 )
 
 add_executable(${PROJECT_NAME}_node
@@ -59,6 +60,7 @@ target_link_libraries(${PROJECT_NAME}_node
   ${OpenCV_LIBS}
   stereo_rectify
   elas
+  libfade2d.so
 )
 
 install(TARGETS ${PROJECT_NAME}_node
@@ -79,6 +81,7 @@ target_link_libraries(${PROJECT_NAME}_TEST_TIME
   ${OpenCV_LIBS}
   elas
   stereo_rectify
+  libfade2d.so
 )
 
 add_executable(${PROJECT_NAME}_TEST_POINTCLOUD
@@ -89,6 +92,7 @@ target_link_libraries(${PROJECT_NAME}_TEST_POINTCLOUD
   ${OpenCV_LIBS}
   elas
   stereo_rectify
+  libfade2d.so
 )
 
 add_executable(${PROJECT_NAME}_TEST_SUPPORT_POINT
@@ -98,6 +102,7 @@ add_executable(${PROJECT_NAME}_TEST_SUPPORT_POINT
 target_link_libraries(${PROJECT_NAME}_TEST_SUPPORT_POINT
   ${OpenCV_LIBS}
   elas
+  libfade2d.so
 )
 
 add_test(NAME ${PROJECT_NAME}_TEST_TIME

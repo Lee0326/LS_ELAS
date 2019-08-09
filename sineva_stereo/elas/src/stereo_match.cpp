@@ -1,6 +1,6 @@
 #include "include/stereo_match.h"
 
-cv::Mat StereoMatch::run(const cv::Mat &image_left, const cv::Mat &image_right)
+cv::Mat StereoMatch::run(cv::Mat &image_left, const cv::Mat &image_right)
 {
     if (image_left.empty() || image_right.empty())
     {
