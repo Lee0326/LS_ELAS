@@ -17,6 +17,7 @@ catkin_package()
 
 set(LIBRARY_OUTPUT_PATH ${PROJECT_SOURCE_DIR}/lib)
 set (INC_DIR /usr/local/include/include_fade2d)
+set (LINK_DIR /usr/local/lib)
 
 add_library(elas SHARED
   elas/src/descriptor.cpp
@@ -27,6 +28,7 @@ add_library(elas SHARED
 
 target_link_libraries(elas
         ${OpenCV_LIBS}
+        libfade2d.so
 )
 
 include_directories(
@@ -39,6 +41,8 @@ include_directories(
   ${EIGEN3_INCLUDE_DIR}
   ${INC_DIR}
 )
+
+link_directories(${LINK_DIR})
 
 add_library(stereo_rectify SHARED
   utils/src/stereo_rectify.cpp
